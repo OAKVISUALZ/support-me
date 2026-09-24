@@ -48,6 +48,15 @@ model Donation {
   message         String?
   transactionHash String?
   createdAt       DateTime @default(now())
+  idempotencyKey  DonationIdempotencyKey?
+}
+
+model DonationIdempotencyKey {
+  key        String   @id
+  donationId Int      @unique
+  donation   Donation @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
 }
 
 model Withdrawal {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PartyIcon } from '@hugeicons/core-free-icons';
 import { useAuth } from '@/context/AuthContext';
@@ -10,6 +10,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppNav } from '@/components/AppNav';
 import { Skeleton } from '@/components/Skeleton';
 import { TipChart } from '@/components/TipChart';
+import { ShareCard } from '@/components/ShareCard';
 import { usePrices } from '@/lib/usePrices';
 import { formatUsd } from '@/lib/prices';
 import { API_URL } from '@/lib/api';
@@ -24,6 +25,9 @@ interface Creator {
   username: string;
   displayName: string;
   walletAddress: string;
+  avatarUrl: string | null;
+  donationGoal: number | null;
+  acceptsXlm: boolean;
 }
 
 interface Donation {
@@ -59,8 +63,12 @@ export default function DashboardPage() {
   const [creator, setCreator] = useState<Creator | null>(null);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [donationPage, setDonationPage] = useState(1);
+  const [hasMoreDonations, setHasMoreDonations] = useState(false);
+  const [loadingMoreDonations, setLoadingMoreDonations] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showShareCard, setShowShareCard] = useState(false);
   const prices = usePrices();
 
   useEffect(() => {
@@ -86,7 +94,7 @@ export default function DashboardPage() {
         setCreator(userCreator);
 
         const [resDonations, resWithdrawals] = await Promise.all([
-          fetch(`${API_URL}/api/donations?creatorUsername=${userCreator.username}`, {
+          fetch(`${API_URL}/api/donations?creatorUsername=${encodeURIComponent(userCreator.username)}&page=1&limit=20`, {
             headers: { 'Authorization': `Bearer ${token}` },
           }),
           fetch(`${API_URL}/api/withdrawals?creatorUsername=${userCreator.username}`, {
@@ -96,7 +104,12 @@ export default function DashboardPage() {
 
         if (resDonations.ok) {
           const donationsData = await resDonations.json();
-          setDonations(Array.isArray(donationsData) ? donationsData : []);
+          const items = Array.isArray(donationsData) ? donationsData : donationsData.items || [];
+          setDonations(items);
+          setDonationPage(1);
+          setHasMoreDonations(
+            Boolean(donationsData.pagination && donationsData.pagination.page < donationsData.pagination.totalPages)
+          );
         }
 
         if (resWithdrawals.ok) {
@@ -112,6 +125,27 @@ export default function DashboardPage() {
 
     fetchCreator();
   }, [user, token]);
+
+  const loadMoreDonations = async () => {
+    if (!creator || !token || loadingMoreDonations || !hasMoreDonations) return;
+    setLoadingMoreDonations(true);
+    try {
+      const nextPage = donationPage + 1;
+      const response = await fetch(
+        `${API_URL}/api/donations?creatorUsername=${encodeURIComponent(creator.username)}&page=${nextPage}&limit=20`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('The server returned an error. Please try again.');
+      const data = await response.json();
+      setDonations((current) => [...current, ...(data.items || [])]);
+      setDonationPage(nextPage);
+      setHasMoreDonations(nextPage < data.pagination.totalPages);
+    } catch (err) {
+      notify.error('Could not load more donations', err);
+    } finally {
+      setLoadingMoreDonations(false);
+    }
+  };
 
   // Subscribe to the backend's SSE stream so newly confirmed on-chain
   // donations show up here live, without needing to refresh the page.
@@ -151,7 +185,7 @@ export default function DashboardPage() {
         return [newDonation, ...prev];
       });
 
-      toast.success('New donation received!', {
+      notify.success('New donation received!', {
         icon: <HugeiconsIcon icon={PartyIcon} size={18} strokeWidth={1.5} />,
       });
     };
@@ -244,7 +278,16 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-background">
         <AppNav />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <h1 className="text-4xl font-extrabold text-ink tracking-tight mb-8">Dashboard</h1>
+          <div className="flex items-center justify-between mb-8 gap-4">
+            <h1 className="text-4xl font-extrabold text-ink tracking-tight">Dashboard</h1>
+            <button
+              type="button"
+              onClick={() => setShowShareCard(true)}
+              className="btn-brutal btn-brutal-primary shrink-0"
+            >
+              Share
+            </button>
+          </div>
 
           {error && (
             <div className="card-brutal bg-brand-pink p-4 mb-6 text-ink font-bold">
@@ -392,9 +435,23 @@ export default function DashboardPage() {
                 })}
               </ul>
             )}
+            {hasMoreDonations && (
+              <button
+                type="button"
+                onClick={loadMoreDonations}
+                disabled={loadingMoreDonations}
+                className="btn-brutal btn-brutal-white mt-4"
+              >
+                {loadingMoreDonations ? 'Loading…' : 'Load older donations'}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {showShareCard && (
+        <ShareCard creator={creator} donations={donations} onClose={() => setShowShareCard(false)} />
+      )}
     </ProtectedRoute>
   );
 }

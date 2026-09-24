@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ImageUpload01Icon } from '@hugeicons/core-free-icons';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppNav } from '@/components/AppNav';
+import { QrCodeCard } from '@/components/QrCodeCard';
 import { Skeleton } from '@/components/Skeleton';
 import { SOCIAL_PLATFORMS, normalizeSocialValue } from '@/lib/socials';
-import { uploadAvatar, UploadError } from '@/lib/upload';
+import { uploadAvatar } from '@/lib/upload';
 import { API_URL } from '@/lib/api';
 
 interface Creator {
@@ -69,7 +70,7 @@ export default function SettingsPage() {
         setDonationGoal(mine.donationGoal != null ? String(mine.donationGoal) : '');
         setSocials(mine.socialLinks || {});
       } catch (err) {
-        toast.error('Could not load settings', { description: (err as Error).message });
+        notify.error('Could not load settings', err);
       } finally {
         setLoading(false);
       }
@@ -101,10 +102,9 @@ export default function SettingsPage() {
       const url = await uploadAvatar(file);
       setAvatarUrl(url);
       setDirty(true);
-      toast.success('Avatar uploaded — save to keep it.');
+      notify.success('Avatar uploaded — save to keep it.');
     } catch (err) {
-      const description = err instanceof UploadError ? err.message : (err as Error).message;
-      toast.error('Upload failed', { description });
+      notify.error('Upload failed', err);
     } finally {
       setUploading(false);
     }
@@ -115,7 +115,7 @@ export default function SettingsPage() {
 
     // At least one payment method must stay on, or the profile can't accept tips.
     if (!acceptsXlm && !acceptsUsdc) {
-      toast.error('Enable at least one payment method (XLM or USDC).');
+      notify.error('Enable at least one payment method (XLM or USDC).');
       return;
     }
 
@@ -125,7 +125,7 @@ export default function SettingsPage() {
     if (donationGoal.trim()) {
       const parsed = Number(donationGoal);
       if (!Number.isInteger(parsed) || parsed <= 0) {
-        toast.error('Donation goal must be a positive whole number.');
+        notify.error('Donation goal must be a positive whole number.');
         return;
       }
       goal = parsed;
@@ -163,9 +163,9 @@ export default function SettingsPage() {
         throw new Error(body.error || 'Failed to save changes');
       }
       setDirty(false);
-      toast.success('Settings saved.');
+      notify.success('Settings saved.');
     } catch (err) {
-      toast.error('Could not save settings', { description: (err as Error).message });
+      notify.error('Could not save settings', err);
     } finally {
       setSaving(false);
     }
@@ -383,6 +383,10 @@ export default function SettingsPage() {
                 {saving ? 'Saving…' : 'Save changes'}
               </button>
             </div>
+          </div>
+
+          <div className="mt-8">
+            <QrCodeCard creator={creator} />
           </div>
         </div>
       </div>

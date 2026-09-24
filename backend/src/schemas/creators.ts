@@ -5,6 +5,13 @@ export const usernameParamSchema = z.object({
   username: z.string().min(1, "username is required"),
 });
 
+export const listCreatorsQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  sort: z.enum(["newest", "most-supported"]).optional().default("newest"),
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(50).optional().default(20),
+});
+
 const usernamePattern = /^[a-zA-Z0-9_-]{3,30}$/;
 
 export const createCreatorSchema = z.object({

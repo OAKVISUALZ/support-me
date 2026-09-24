@@ -2,6 +2,9 @@ jest.mock("../../prisma", () => ({
   __esModule: true,
   default: {},
 }));
+jest.mock("../../services/sorobanHealth", () => ({
+  checkSorobanRpc: jest.fn().mockResolvedValue({ status: "ok", latencyMs: 4 }),
+}));
 
 import request from "supertest";
 import app from "../../app";
@@ -12,6 +15,18 @@ describe("GET /health", () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
     expect(typeof res.body.timestamp).toBe("string");
+    expect(res.body.dependencies.sorobanRpc.status).toBe("ok");
+  });
+
+  it("reports degraded status when Soroban RPC is unavailable", async () => {
+    const { checkSorobanRpc } = await import("../../services/sorobanHealth");
+    (checkSorobanRpc as jest.Mock).mockResolvedValueOnce({ status: "down" });
+
+    const res = await request(app).get("/health");
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("degraded");
+    expect(res.body.dependencies.sorobanRpc.status).toBe("down");
   });
 });
 

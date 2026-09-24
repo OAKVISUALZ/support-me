@@ -1,18 +1,29 @@
-"use client";
+'use client';
 
-import * as Sentry from "@sentry/nextjs";
-import Error from "next/error";
-import { useEffect } from "react";
+import { useEffect, useState } from 'react';
+import { ErrorFallback } from '@/components/ErrorFallback';
+import { reportBoundaryError } from '@/lib/reportError';
+import './globals.css';
 
-export default function GlobalError({ error }: { error: Error }) {
+// Last-resort boundary for errors thrown by the root layout itself (e.g. a
+// provider). It replaces the root layout, so it has to render <html>/<body>.
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  const [eventId, setEventId] = useState<string>();
+
   useEffect(() => {
-    Sentry.captureException(error);
+    setEventId(reportBoundaryError(error, 'global'));
   }, [error]);
 
   return (
-    <html>
-      <body>
-        {/* Your Error component here... */}
+    <html lang="en">
+      <body className="antialiased">
+        <ErrorFallback onRetry={reset} onReload={() => window.location.reload()} eventId={eventId} />
       </body>
     </html>
   );

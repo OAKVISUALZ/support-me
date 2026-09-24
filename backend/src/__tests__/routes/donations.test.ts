@@ -6,8 +6,16 @@ jest.mock("../../prisma", () => ({
     },
     donation: {
       findMany: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
     },
+    donationIdempotencyKey: {
+      deleteMany: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(),
   },
 }));
 
@@ -17,8 +25,23 @@ import prisma from "../../prisma";
 
 const mockedPrisma = prisma as unknown as {
   creator: { findUnique: jest.Mock };
-  donation: { findMany: jest.Mock; create: jest.Mock };
+  donation: { findMany: jest.Mock; count: jest.Mock; create: jest.Mock };
+  donationIdempotencyKey: {
+    deleteMany: jest.Mock;
+    findUnique: jest.Mock;
+    delete: jest.Mock;
+    create: jest.Mock;
+  };
+  $transaction: jest.Mock;
 };
+
+beforeEach(() => {
+  mockedPrisma.$transaction.mockImplementation((callback: (client: typeof mockedPrisma) => unknown) =>
+    callback(mockedPrisma)
+  );
+  mockedPrisma.donation.count.mockResolvedValue(0);
+  mockedPrisma.donationIdempotencyKey.findUnique.mockResolvedValue(null);
+});
 
 describe("GET /api/donations", () => {
   it("returns all donations ordered by creation date", async () => {
@@ -28,9 +51,12 @@ describe("GET /api/donations", () => {
     const res = await request(app).get("/api/donations");
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual(donations);
+    expect(res.body).toEqual({ items: donations, pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } });
     expect(mockedPrisma.donation.findMany).toHaveBeenCalledWith({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      where: undefined,
+      skip: 0,
+      take: 20,
     });
   });
 
@@ -40,13 +66,27 @@ describe("GET /api/donations", () => {
     await request(app).get("/api/donations").query({ creatorUsername: "bob" });
 
     expect(mockedPrisma.donation.findMany).toHaveBeenCalledWith({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       where: { creator: { username: "bob" } },
+      skip: 0,
+      take: 20,
     });
   });
 });
 
 describe("POST /api/donations", () => {
+  it("rejects a request without an idempotency key", async () => {
+    const res = await request(app).post("/api/donations").send({
+      creatorUsername: "bob",
+      senderAddress:
+        "GA7D5LDGFABXNYEO6LZVMTWK5JWEPTODCLYZ7TG4XDZRKKXP6OS5K5JW",
+      amount: 10,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("BAD_REQUEST");
+  });
+
   it("rejects a request missing required fields with a validation error", async () => {
     const res = await request(app).post("/api/donations").send({ amount: 10 });
 
@@ -57,7 +97,7 @@ describe("POST /api/donations", () => {
   it("returns 404 when the target creator does not exist", async () => {
     mockedPrisma.creator.findUnique.mockResolvedValue(null);
 
-    const res = await request(app).post("/api/donations").send({
+    const res = await request(app).post("/api/donations").set("Idempotency-Key", "missing-creator").send({
       creatorUsername: "unknown",
       senderAddress:
         "GA7D5LDGFABXNYEO6LZVMTWK5JWEPTODCLYZ7TG4XDZRKKXP6OS5K5JW",
@@ -80,7 +120,7 @@ describe("POST /api/donations", () => {
     };
     mockedPrisma.donation.create.mockResolvedValue(created);
 
-    const res = await request(app).post("/api/donations").send({
+    const res = await request(app).post("/api/donations").set("Idempotency-Key", "donation-1").send({
       creatorUsername: "bob",
       senderAddress:
         "GA7D5LDGFABXNYEO6LZVMTWK5JWEPTODCLYZ7TG4XDZRKKXP6OS5K5JW",
@@ -101,5 +141,28 @@ describe("POST /api/donations", () => {
         transactionHash: undefined,
       },
     });
+  });
+
+  it("returns the original donation for a repeated idempotency key", async () => {
+    const original = { id: 1, creatorId: 7, amount: 10 };
+    mockedPrisma.donationIdempotencyKey.findUnique.mockResolvedValue({
+      key: "donation-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      donation: original,
+    });
+
+    const res = await request(app)
+      .post("/api/donations")
+      .set("Idempotency-Key", "donation-1")
+      .send({
+        creatorUsername: "bob",
+        senderAddress:
+          "GA7D5LDGFABXNYEO6LZVMTWK5JWEPTODCLYZ7TG4XDZRKKXP6OS5K5JW",
+        amount: 99,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual(original);
+    expect(mockedPrisma.donation.create).not.toHaveBeenCalled();
   });
 });

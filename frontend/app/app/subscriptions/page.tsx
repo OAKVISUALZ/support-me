@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppNav } from '@/components/AppNav';
 import { Skeleton } from '@/components/Skeleton';
-import { cancelSubscription, DonationError } from '@/lib/contract';
+import { cancelSubscription } from '@/lib/contract';
 import { API_URL } from '@/lib/api';
 
 interface Subscription {
@@ -42,9 +42,12 @@ function SubscriptionsList() {
   useEffect(() => {
     if (!user?.walletAddress) return;
     fetch(`${API_URL}/api/subscriptions?supporterAddress=${encodeURIComponent(user.walletAddress)}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('The server returned an error. Please try again.');
+        return res.json();
+      })
       .then(setSubscriptions)
-      .catch(() => toast.error('Could not load your subscriptions'))
+      .catch((err) => notify.error('Could not load your subscriptions', err))
       .finally(() => setLoading(false));
   }, [user?.walletAddress]);
 
@@ -57,21 +60,26 @@ function SubscriptionsList() {
         subscriptionId: subscription.onChainId,
       });
 
-      await fetch(`${API_URL}/api/subscriptions/${subscription.id}/cancel`, {
+      // The on-chain cancel (which also revokes the allowance) is what stops
+      // charges; this call only updates our records, so a failure here is a
+      // warning rather than an error.
+      const recordRes = await fetch(`${API_URL}/api/subscriptions/${subscription.id}/cancel`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-      });
+      }).catch(() => null);
 
       setSubscriptions((prev) =>
         prev.map((s) => (s.id === subscription.id ? { ...s, active: false } : s))
       );
-      toast.success('Subscription cancelled');
-    } catch (err) {
-      if (err instanceof DonationError) {
-        toast.error('Could not cancel subscription', { description: err.message });
+      if (recordRes?.ok) {
+        notify.success('Subscription cancelled');
       } else {
-        toast.error('Could not cancel subscription', { description: (err as Error).message });
+        notify.warning("Subscription cancelled, but we couldn't update our records", {
+          description: 'No further charges will be made. It may still show as active after a refresh.',
+        });
       }
+    } catch (err) {
+      notify.error('Could not cancel subscription', err);
     } finally {
       setCancellingId(null);
     }
