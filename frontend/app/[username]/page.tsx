@@ -30,7 +30,13 @@ export async function generateMetadata({ params }: { params: ParamsPromise }): P
   const creator = await fetchCreatorSummary(username);
 
   if (!creator) {
-    return { title: 'Creator not found — SupportMe' };
+    return {
+      title: 'Creator not found — SupportMe',
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
   }
 
   const name = creator.displayName || creator.username;
@@ -40,6 +46,13 @@ export async function generateMetadata({ params }: { params: ParamsPromise }): P
   return {
     title,
     description,
+    alternates: {
+      canonical: `/${username}`,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
     openGraph: {
       title,
       description,

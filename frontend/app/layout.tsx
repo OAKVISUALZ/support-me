@@ -14,9 +14,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://support-mee.vercel.app';
+
 export const metadata: Metadata = {
-  title: "Support Me",
-  description: "Support your favorite Creator",
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: "SupportMe — Direct Tipping Platform Built on Stellar",
+    template: "%s | SupportMe",
+  },
+  description: "Support your favorite creators directly with XLM and USDC on Stellar. Zero platform fees and instant bank cashout.",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -37,4 +50,3 @@ export default function RootLayout({
     </html>
   );
 }
-
