@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppNav } from '@/components/AppNav';
 import { Skeleton } from '@/components/Skeleton';
+import { notify } from '@/lib/notify';
 
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
@@ -48,7 +49,12 @@ export default function WithdrawPage() {
           setUsdcBalance(usdc ? Math.round(parseFloat((usdc as any).balance)).toString() : null);
         }
       })
-      .catch(() => {})
+      .catch(() =>
+        notify.error(
+          'Could not load your balances',
+          'Make sure your wallet is funded on testnet, then refresh the page.',
+        ),
+      )
       .finally(() => setBalancesLoading(false));
   }, [walletAddress]);
 
@@ -67,6 +73,7 @@ export default function WithdrawPage() {
     setTimeout(() => {
       setRef(`PL-${Date.now().toString(36).toUpperCase()}`);
       setStage('done');
+      notify.success('Withdrawal initiated');
     }, 2200);
   }
 

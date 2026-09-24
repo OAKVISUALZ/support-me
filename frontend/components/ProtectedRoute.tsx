@@ -3,11 +3,13 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { TipJarLoader } from '@/components/TipJarLoader';
+import { WalletConnectError, WalletConnectErrorData } from '@/components/WalletConnectError';
+import { categorizeWalletError } from '@/lib/walletErrors';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading, loginWithWallet } = useAuth();
   const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState('');
+  const [walletError, setWalletError] = useState<WalletConnectErrorData | null>(null);
 
   if (loading) {
     return <TipJarLoader />;
@@ -16,11 +18,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!user) {
     const handleConnect = async () => {
       setConnecting(true);
-      setError('');
+      setWalletError(null);
       try {
         await loginWithWallet();
       } catch (err) {
-        setError((err as Error).message);
+        setWalletError(categorizeWalletError(err));
       } finally {
         setConnecting(false);
       }
@@ -33,11 +35,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           <p className="text-muted font-medium mb-6">
             Sign in by connecting your Stellar wallet and approving a sign-in request.
           </p>
-          {error && (
-            <div className="card-brutal bg-brand-pink p-3 mb-4 text-sm font-bold text-ink">
-              {error}
-            </div>
-          )}
+          {walletError && <WalletConnectError error={walletError} onRetry={handleConnect} className="mb-4" />}
           <button
             onClick={handleConnect}
             disabled={connecting}

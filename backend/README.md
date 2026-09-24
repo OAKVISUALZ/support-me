@@ -47,8 +47,18 @@ It is built with TypeScript, Express, and Prisma, and is designed to support cre
 - `POST /api/creators`
 - `GET /api/creators/:username`
 - `PUT /api/creators/:username`
-- `GET /api/donations?creatorUsername={username}`
-- `POST /api/donations`
+- `GET /api/donations?creatorUsername={username}&page=1&limit=20`
+- `POST /api/donations` (requires an `Idempotency-Key` header)
+
+Donation history responses contain `items` and `pagination`. `limit` defaults to
+20 and is capped at 100. Use `page` to request older pages. Recording the same
+on-chain donation again with the same `Idempotency-Key` returns the original
+donation without inserting another row. Keys are retained for 24 hours.
+
+`GET /health` reports `status: "ok"` when the process and Soroban RPC are
+available, and `status: "degraded"` with `dependencies.sorobanRpc.status:
+"down"` when the RPC probe fails. The probe calls `getLatestLedger` and times
+out after 1.5 seconds.
 
 ## Notes for Contributors
 

@@ -6,6 +6,7 @@ import { validate } from "../middleware/validate";
 import {
   createCreatorParamsSchema,
   createCreatorSchema,
+  listCreatorsQuerySchema,
   updateCreatorSchema,
   usernameParamSchema,
 } from "../schemas/creators";
@@ -13,14 +14,54 @@ import { ConflictError, NotFoundError, UnauthorizedError } from "../errors/AppEr
 
 const router = Router();
 
+// Discovery/search: browse creators by name or username, sorted by newest
+// or by donation count ("most supported" — a currency-agnostic proxy for
+// popularity, since a creator's donations can span multiple assets).
 router.get(
   "/",
+  validate({ query: listCreatorsQuerySchema }),
   asyncHandler(async (req, res) => {
-    const creators = await prisma.creator.findMany({
-      orderBy: { createdAt: "desc" },
-      include: { donations: true },
+    const { q, sort, page, limit } = req.query as unknown as {
+      q?: string;
+      sort: "newest" | "most-supported";
+      page: number;
+      limit: number;
+    };
+
+    const where = q
+      ? {
+          OR: [
+            { username: { contains: q, mode: "insensitive" as const } },
+            { displayName: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined;
+
+    const orderBy =
+      sort === "most-supported"
+        ? { donations: { _count: "desc" as const } }
+        : { createdAt: "desc" as const };
+
+    const [creators, total] = await Promise.all([
+      prisma.creator.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { _count: { select: { donations: true } } },
+      }),
+      prisma.creator.count({ where }),
+    ]);
+
+    return res.json({
+      items: creators,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
-    return res.json(creators);
   })
 );
 
@@ -48,7 +89,6 @@ router.get(
     const { username } = req.params;
     const creator = await prisma.creator.findUnique({
       where: { username },
-      include: { donations: true },
     });
 
     if (!creator) {

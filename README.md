@@ -267,8 +267,8 @@ Frontend will run on `http://localhost:3000`
 
 ### Donations
 
-- `GET /api/donations` - List donations (query: `creatorUsername`)
-- `POST /api/donations` - Record a donation
+- `GET /api/donations` - List donations (query: `creatorUsername`, `page`, and `limit`; default limit 20, maximum 100)
+- `POST /api/donations` - Record a donation (requires an `Idempotency-Key` header; keys are retained for 24 hours)
   - Body: `{ creatorUsername, senderAddress, amount, message, transactionHash }`
 
 ### Subscriptions (recurring donations)
@@ -335,6 +335,10 @@ NEXT_PUBLIC_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 # against the self-hosted anchor, run `cd anchor && ./setup.sh` and set:
 NEXT_PUBLIC_ANCHOR_HOME_DOMAIN=localhost:8080
 NEXT_PUBLIC_ANCHOR_ASSET_CODE=USDC
+
+# Public origin used to build absolute og:image / twitter:image URLs for link
+# previews. Optional on Vercel (falls back to the production domain).
+# NEXT_PUBLIC_SITE_URL=https://your-domain.example
 ```
 
 **Deploying to Vercel:** do not ship `localhost:8080` — `NEXT_PUBLIC_` vars

@@ -1,42 +1,23 @@
 import type { Metadata } from 'next';
-import { API_URL } from '@/lib/api';
 import CreatorProfileClient from './CreatorProfileClient';
+import { fetchCreatorSummary } from './creator-summary';
 
 type ParamsPromise = Promise<{ username: string }>;
-
-interface CreatorSummary {
-  username: string;
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-}
-
-// Server-side only, purely for building link-preview metadata — the client
-// component does its own fetch (with live SSE updates) for the actual page.
-async function fetchCreatorSummary(username: string): Promise<CreatorSummary | null> {
-  try {
-    const res = await fetch(`${API_URL}/api/creators/${username}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
 
 export async function generateMetadata({ params }: { params: ParamsPromise }): Promise<Metadata> {
   const { username } = await params;
   const creator = await fetchCreatorSummary(username);
 
   if (!creator) {
-    return { title: 'Creator not found — SupportMe' };
+    return { title: 'Creator not found' };
   }
 
   const name = creator.displayName || creator.username;
   const description = creator.bio?.trim() || `Support ${name} with a tip on SupportMe.`;
-  const title = `${name} (@${creator.username}) on SupportMe`;
+  const title = `Support ${name} (@${creator.username})`;
 
+  // og:image / twitter:image come from the generated opengraph-image.tsx and
+  // twitter-image.tsx next to this file (a 1200x630 card with the avatar).
   return {
     title,
     description,
@@ -44,13 +25,13 @@ export async function generateMetadata({ params }: { params: ParamsPromise }): P
       title,
       description,
       type: 'profile',
-      images: creator.avatarUrl ? [{ url: creator.avatarUrl }] : undefined,
+      siteName: 'SupportMe',
+      url: `/${creator.username}`,
     },
     twitter: {
-      card: creator.avatarUrl ? 'summary' : 'summary_large_image',
+      card: 'summary_large_image',
       title,
       description,
-      images: creator.avatarUrl ? [creator.avatarUrl] : undefined,
     },
   };
 }

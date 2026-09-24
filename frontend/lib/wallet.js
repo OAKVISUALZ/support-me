@@ -9,6 +9,29 @@ const NETWORK_PASSPHRASE = Networks.TESTNET;
 
 let initialized = false;
 
+// Normalized error thrown by every wallet operation in this module. The kit
+// and individual wallets reject with plain objects (e.g. `{ code, message }`)
+// or loosely-typed messages, so we wrap them in a real Error carrying the
+// original `code` for downstream categorization.
+export class WalletConnectionError extends Error {
+  constructor(message, options = {}) {
+    super(message);
+    this.name = 'WalletConnectionError';
+    this.code = options.code;
+    this.details = options.raw;
+  }
+}
+
+const toWalletError = (err) => {
+  if (err instanceof WalletConnectionError) return err;
+  const message =
+    err?.message || err?.error?.message || 'Could not connect to your wallet.';
+  return new WalletConnectionError(message, {
+    code: err?.error?.code ?? err?.code,
+    raw: err,
+  });
+};
+
 const ensureInit = () => {
   if (initialized) return;
 
@@ -54,21 +77,29 @@ const disconnectWallet = async () => {
 // Signs an XDR transaction using whichever wallet the user picked in the modal.
 const signTransaction = async (xdr, address) => {
   ensureInit();
-  return await StellarWalletsKit.signTransaction(xdr, {
-    address,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  });
+  try {
+    return await StellarWalletsKit.signTransaction(xdr, {
+      address,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+  } catch (err) {
+    throw toWalletError(err);
+  }
 };
 
 // Signs an arbitrary text message (used for the wallet sign-in challenge).
 // Returns the base64-encoded signed message.
 const signMessage = async (message, address) => {
   ensureInit();
-  const { signedMessage } = await StellarWalletsKit.signMessage(message, {
-    address,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  });
-  return signedMessage;
+  try {
+    const { signedMessage } = await StellarWalletsKit.signMessage(message, {
+      address,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+    return signedMessage;
+  } catch (err) {
+    throw toWalletError(err);
+  }
 };
 
 export { connectWallet, disconnectWallet, signTransaction, signMessage };

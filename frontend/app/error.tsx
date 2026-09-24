@@ -1,49 +1,38 @@
 'use client';
 
-import { useEffect } from 'react';
-import Link from 'next/link';
-import * as Sentry from '@sentry/nextjs';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { AlertCircleIcon } from '@hugeicons/core-free-icons';
+import { startTransition, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ErrorFallback } from '@/components/ErrorFallback';
+import { reportBoundaryError } from '@/lib/reportError';
 
-export default function GlobalError({
+// Top-level route error boundary: catches render errors in any page below the
+// root layout, so the nav/providers stay mounted and only the page is swapped
+// for the fallback.
+export default function RouteError({
   error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [eventId, setEventId] = useState<string>();
+
   useEffect(() => {
-    Sentry.captureException(error);
-  }, [error]);
+    setEventId(reportBoundaryError(error, 'route', pathname));
+  }, [error, pathname]);
+
+  // Re-fetch server components (in case the error came from the server) and
+  // re-render the segment in place, without a full page load.
+  const retry = () => {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="card-brutal p-8 max-w-md w-full text-center">
-        <div className="flex justify-center mb-4">
-          <div className="card-brutal bg-brand-yellow w-16 h-16 flex items-center justify-center">
-            <HugeiconsIcon icon={AlertCircleIcon} size={32} strokeWidth={2} className="text-ink" />
-          </div>
-        </div>
-        <h1 className="text-2xl font-extrabold text-ink mb-2">Something went wrong</h1>
-        <p className="text-muted mb-6 font-medium">
-          An unexpected error occurred. You can try again, or head back home.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            onClick={reset}
-            className="btn-brutal btn-brutal-primary"
-          >
-            Try Again
-          </button>
-          <Link
-            href="/"
-            className="btn-brutal btn-brutal-white"
-          >
-            Go Home
-          </Link>
-        </div>
-      </div>
-    </div>
+    <ErrorFallback onRetry={retry} onReload={() => window.location.reload()} eventId={eventId} />
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import * as StellarSdk from '@stellar/stellar-sdk';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ViewIcon,
@@ -70,9 +70,7 @@ export default function AppHubPage() {
         if (!res.ok) throw new Error('Failed to load your profile');
         setCreator(await res.json());
       } catch (err) {
-        toast.error('Could not load your profile', {
-          description: (err as Error).message,
-        });
+        notify.error('Could not load your profile', err);
       } finally {
         setLoading(false);
       }
@@ -133,10 +131,10 @@ export default function AppHubPage() {
     try {
       await navigator.clipboard.writeText(profileUrl);
       setCopied(true);
-      toast.success('Profile link copied to clipboard');
+      notify.success('Profile link copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Could not copy link');
+      notify.error('Could not copy link');
     }
   };
 

@@ -1,34 +1,35 @@
-# Pull Request: Harden Backend Validation and Subscription Processing
+# Add donation reliability and operational safeguards
 
 ## Summary
 
-This PR completes backend hardening for request validation, error responses, recurring subscription processing, and supporter notifications.
+This PR addresses backend issues #28, #29, #30, and #31:
 
-## Changes
+- Adds required `Idempotency-Key` support to donation recording, with 24-hour
+  retention and duplicate-request short-circuiting.
+- Adds bounded donation history pagination with frontend loading of older pages.
+- Extends `/health` with a fast Soroban RPC probe and degraded dependency status.
+- Documents Railway PostgreSQL backup verification, restore, and restore-drill
+  procedures.
 
-- Added shared Stellar address, asset code, transaction hash, and ID validation.
-- Added consistent handling for malformed JSON, forbidden access, and validation errors.
-- Added ownership validation for subscription cancellation and subscription recording.
-- Improved recurring subscription execution so one failed subscription does not stop the processing pass.
-- Added failure tracking and one-notification-per-failure-streak behavior.
-- Added renewal and payment-failure email templates with optional Resend delivery.
-- Added the required Prisma fields for user email and subscription notification state.
-- Updated route fixtures to use valid Stellar public keys.
+## API changes
 
-## Verification
+- `POST /api/donations` now requires an `Idempotency-Key` header.
+- `GET /api/donations` accepts `page` and `limit`; `limit` defaults to 20 and is
+  capped at 100.
+- Donation history responses now return `items` and `pagination`.
+- `/health` reports `dependencies.sorobanRpc` and returns `degraded` when RPC is
+  unavailable while keeping the backend responsive.
 
-- `cd backend && npm test -- --runInBand`
-- `cd backend && npm run build`
+## Validation
 
-Result: 64 tests passed and the TypeScript/Prisma build completed successfully.
+- Backend build passes.
+- Backend Jest suite passes: 67 tests.
+- Workspace diagnostics report no errors in the touched frontend files.
 
-## Deployment Note
+## Deployment notes
 
-Apply the Prisma schema changes in the target database before deployment:
-
-```bash
-cd backend
-npx prisma migrate dev --name subscription_notifications
-```
-
-Configure `RESEND_API_KEY` and `EMAIL_FROM` to enable transactional email delivery. Without `RESEND_API_KEY`, email messages are logged for local development and CI.
+- Apply the Prisma schema to the target database with the deployment's normal
+  Prisma migration or `db push` workflow.
+- Enable and verify Railway automated backups in the production database
+  service. The repository includes the restore runbook, but Railway account
+  access is required to perform the backup verification and restore drill.
