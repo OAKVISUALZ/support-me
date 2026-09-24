@@ -30,8 +30,20 @@ const ensureInit = () => {
 // and returns the connected public address.
 const connectWallet = async () => {
   ensureInit();
-  const { address } = await StellarWalletsKit.authModal();
-  return address;
+  try {
+    const res = await StellarWalletsKit.authModal();
+    return res?.address || null;
+  } catch (err) {
+    if (
+      err?.message?.toLowerCase().includes('closed') ||
+      err?.message?.toLowerCase().includes('rejected') ||
+      err?.message?.toLowerCase().includes('canceled') ||
+      err?.message?.toLowerCase().includes('cancelled')
+    ) {
+      return null;
+    }
+    throw err;
+  }
 };
 
 const disconnectWallet = async () => {

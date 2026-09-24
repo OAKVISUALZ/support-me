@@ -183,6 +183,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
     setConnecting(true);
     try {
       const address = await connectWallet();
+      if (!address) return;
       setUserAddress(address);
       setBalance(await loadAssetBalance(address, assetCode));
       toast.success('Wallet connected!');
@@ -298,7 +299,9 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
     try {
       let address = userAddress;
       if (!address) {
-        address = await connectWallet();
+        const connected = await connectWallet();
+        if (!connected) return;
+        address = connected;
         setUserAddress(address);
       }
 
@@ -518,13 +521,13 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
             <button
               onClick={handleConnectWallet}
               disabled={connecting}
-              className="btn-brutal btn-brutal-primary w-full"
+              className="btn-brutal btn-brutal-primary w-full min-h-[48px] text-base font-extrabold flex items-center justify-center"
             >
               {connecting ? 'Connecting…' : 'Connect Wallet'}
             </button>
           ) : (
             <div className="space-y-4">
-              <div className="card-brutal bg-brand-lime p-3 text-sm">
+              <div className="card-brutal bg-brand-lime p-3.5 text-sm">
                 <p className="text-ink font-medium">Wallet: {userAddress.slice(0, 8)}…</p>
                 <p className="text-ink font-extrabold mt-1">
                   {balance ?? '0.0000'} {assetCode}
@@ -545,7 +548,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
                           }
                         }}
                         aria-pressed={assetCode === code}
-                        className={`btn-brutal text-sm px-0 py-2 ${
+                        className={`btn-brutal text-sm px-0 min-h-[44px] flex items-center justify-center font-bold ${
                           assetCode === code ? 'btn-brutal-primary' : 'btn-brutal-white'
                         }`}
                       >
@@ -567,7 +570,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
                   step="0.1"
                   value={donationAmount}
                   onChange={(e) => setDonationAmount(e.target.value)}
-                  className="input-brutal"
+                  className="input-brutal min-h-[44px] text-base"
                 />
               </div>
 
@@ -576,7 +579,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
                   <button
                     key={preset}
                     onClick={() => setDonationAmount(preset)}
-                    className={`btn-brutal text-sm px-0 py-2 ${
+                    className={`btn-brutal text-sm px-0 min-h-[44px] flex items-center justify-center font-bold ${
                       donationAmount === preset ? 'btn-brutal-primary' : 'btn-brutal-white'
                     }`}
                   >
@@ -595,29 +598,29 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
                   onChange={(e) => setDonationMessage(e.target.value)}
                   maxLength={140}
                   placeholder="Thanks for your work!"
-                  className="input-brutal text-sm"
+                  className="input-brutal text-base sm:text-sm"
                   rows={3}
                 />
                 <p className="text-xs text-muted mt-1 font-medium">{donationMessage.length}/140</p>
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <label className="flex items-center gap-2 text-sm font-bold text-ink">
+              <div className="flex flex-wrap items-center justify-between gap-3 min-h-[44px]">
+                <label className="flex items-center gap-2 text-sm font-bold text-ink cursor-pointer py-1">
                   <input
                     type="checkbox"
                     checked={recurring}
                     onChange={(e) => setRecurring(e.target.checked)}
-                    className="h-4 w-4 accent-primary"
+                    className="h-5 w-5 accent-primary min-h-[20px] min-w-[20px]"
                   />
                   Make it recurring
                 </label>
 
                 {recurring && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <select
                       value={intervalChoice}
                       onChange={(e) => setIntervalChoice(e.target.value as typeof intervalChoice)}
-                      className="input-brutal text-sm py-1.5 w-auto"
+                      className="input-brutal text-sm py-2 min-h-[44px] w-auto"
                     >
                       <option value="7">Weekly</option>
                       <option value="30">Monthly</option>
@@ -633,7 +636,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
                         onChange={(e) => setCustomDays(e.target.value)}
                         aria-label="Days between charges"
                         title={`Up to ${MAX_CHARGE_INTERVAL_DAYS} days`}
-                        className="input-brutal text-sm py-1.5 w-14"
+                        className="input-brutal text-sm py-2 min-h-[44px] w-16"
                       />
                     )}
                   </div>
@@ -652,7 +655,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
               <button
                 onClick={recurring ? handleStartSubscription : handleSendDonation}
                 disabled={sending || !creator.walletAddress}
-                className="btn-brutal btn-brutal-lime w-full"
+                className="btn-brutal btn-brutal-lime w-full min-h-[48px] text-base font-extrabold flex items-center justify-center"
               >
                 {recurring ? 'Start Recurring Donation' : 'Send Donation'}
               </button>
