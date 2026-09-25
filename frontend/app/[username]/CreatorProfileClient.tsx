@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, use } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { notify } from '@/lib/notify';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -25,6 +26,7 @@ import { API_URL } from '@/lib/api';
 import { describeDonationFailure } from '@/lib/failures';
 import { useAuth } from '@/context/AuthContext';
 import { Skeleton } from '@/components/Skeleton';
+import { ProfileSkeleton } from '@/components/ProfileSkeleton';
 import { TipJarLoader } from '@/components/TipJarLoader';
 
 
@@ -400,18 +402,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background py-10 px-4">
-        <div className="max-w-md mx-auto">
-          <div className="card-brutal p-8 text-center">
-            <Skeleton className="h-24 w-24 rounded-full mx-auto mb-4" />
-            <Skeleton className="h-8 w-48 mx-auto mb-2" />
-            <Skeleton className="h-5 w-32 mx-auto mb-6" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (notFound || !creator) {
@@ -435,6 +426,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
   return (
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-md mx-auto space-y-6">
+
         {/* Creator header */}
         <div className="card-brutal p-8 text-center">
           <div className="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-ink overflow-hidden bg-accent-bg flex items-center justify-center">

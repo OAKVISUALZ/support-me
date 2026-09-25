@@ -9,6 +9,8 @@ import { useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppNav } from '@/components/AppNav';
 import { Skeleton } from '@/components/Skeleton';
+import { DashboardSkeleton } from '@/components/DashboardSkeleton';
+import { DonationHistorySkeleton } from '@/components/DonationHistorySkeleton';
 import { TipChart } from '@/components/TipChart';
 import { ShareCard } from '@/components/ShareCard';
 import { usePrices } from '@/lib/usePrices';
@@ -282,35 +284,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-background">
-          <AppNav />
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <Skeleton className="h-9 w-40 mb-8" />
-
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {[0, 1].map((i) => (
-                <div key={i} className="card-brutal p-6">
-                  <Skeleton className="h-4 w-28 mb-3" />
-                  <Skeleton className="h-8 w-24" />
-                </div>
-              ))}
-            </div>
-
-            <div className="card-brutal p-6 mb-8">
-              <Skeleton className="h-5 w-32 mb-4" />
-              <Skeleton className="h-48 w-full" />
-            </div>
-
-            <div className="card-brutal p-6">
-              <Skeleton className="h-5 w-40 mb-4" />
-              <div className="space-y-3">
-                {[0, 1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardSkeleton />
       </ProtectedRoute>
     );
   }
@@ -550,12 +524,15 @@ export default function DashboardPage() {
             )}
 
             {loadingMoreDonations && (
-              <div
-                data-testid="donations-loading-indicator"
-                className="mt-4 p-3 bg-brand-light-purple/20 border-2 border-dashed border-ink/20 rounded-lg flex items-center justify-center gap-2 text-sm font-bold text-ink"
-              >
-                <div className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full animate-spin" />
-                <span>Loading older donations…</span>
+              <div className="mt-4 space-y-3">
+                <DonationHistorySkeleton rows={2} />
+                <div
+                  data-testid="donations-loading-indicator"
+                  className="p-3 bg-brand-light-purple/20 border-2 border-dashed border-ink/20 rounded-lg flex items-center justify-center gap-2 text-sm font-bold text-ink"
+                >
+                  <div className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full animate-spin" />
+                  <span>Loading older donations…</span>
+                </div>
               </div>
             )}
 
