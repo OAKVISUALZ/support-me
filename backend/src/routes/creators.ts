@@ -16,6 +16,11 @@ import { TtlCache } from "../services/ttlCache";
 
 const router = Router();
 
+// Cache creator profile lookups by username with a 5-minute TTL.
+// Profiles change infrequently, so this reduces DB load while staying fresh.
+// Exported so tests can reset it between cases.
+export const creatorProfileCache = new TtlCache<any>(5 * 60 * 1000);
+
 interface LeaderboardEntry {
   rank: number;
   total: number;
@@ -186,15 +191,34 @@ router.get(
   validate({ params: usernameParamSchema }),
   asyncHandler(async (req, res) => {
     const { username } = req.params;
-    const creator = await prisma.creator.findUnique({
-      where: { username },
-    });
 
-    if (!creator) {
-      throw new NotFoundError("Creator not found");
+    try {
+      const creator = await creatorProfileCache.getOrSet(username, async () => {
+        const profile = await prisma.creator.findUnique({
+          where: { username },
+        });
+        if (!profile) {
+          throw new NotFoundError("Creator not found");
+        }
+        return profile;
+      });
+
+      return res.json(creator);
+    } catch (error) {
+      // If cache fails, fall back to direct DB read
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      const creator = await prisma.creator.findUnique({
+        where: { username },
+      });
+
+      if (!creator) {
+        throw new NotFoundError("Creator not found");
+      }
+
+      return res.json(creator);
     }
-
-    return res.json(creator);
   })
 );
 
@@ -264,6 +288,9 @@ router.put(
       where: { username },
       data: updates,
     });
+
+    // Invalidate cache when profile is updated
+    creatorProfileCache.clear();
 
     return res.json(creator);
   })
