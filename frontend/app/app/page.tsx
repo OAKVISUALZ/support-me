@@ -19,6 +19,7 @@ import { usePrices } from '@/lib/usePrices';
 import { formatUsd } from '@/lib/prices';
 import { availableAssetCodes, getAsset } from '@/lib/assets';
 import { API_URL } from '@/lib/api';
+import { ShareModal } from '@/components/ShareModal';
 
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
@@ -46,6 +47,7 @@ export default function AppHubPage() {
   const [hidden, setHidden] = useState(false);
   const [showUsd, setShowUsd] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
 
   // Stable across renders so the balance-loading effect below doesn't re-run in
@@ -138,24 +140,9 @@ export default function AppHubPage() {
     }
   };
 
-  // Prefer the native share sheet (great on mobile); fall back to copying the
-  // link on desktop browsers that don't implement the Web Share API.
-  const shareProfile = async () => {
-    if (!profileUrl) return;
-    const shareData = {
-      title: creator?.displayName || creator?.username || 'SupportMe',
-      text: `Support ${creator?.displayName || creator?.username} on SupportMe`,
-      url: profileUrl,
-    };
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // User dismissed the share sheet — not an error worth surfacing.
-      }
-      return;
-    }
-    await copyProfile();
+  // Open the share choice modal (Copy link, QR code, both, or native share)
+  const shareProfile = () => {
+    setShowShareModal(true);
   };
 
   const greetingName = creator?.displayName || creator?.username || 'there';
@@ -279,6 +266,10 @@ export default function AppHubPage() {
           </div>
         </div>
       </div>
+
+      {showShareModal && creator && (
+        <ShareModal creator={creator} onClose={() => setShowShareModal(false)} />
+      )}
     </ProtectedRoute>
   );
 }
