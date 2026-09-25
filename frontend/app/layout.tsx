@@ -15,57 +15,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
-
-const SHARE_TITLE = "SupportMe — Get Tipped. Get Paid.";
-const SHARE_DESCRIPTION =
-  "A tipping platform built on Stellar. Supporters send XLM or USDC, you cash out to your bank.";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://support-mee.vercel.app';
 
 export const metadata: Metadata = {
-  // Makes the generated og/twitter image URLs absolute, which X and other
-  // crawlers require.
-  metadataBase: new URL(SITE_URL),
-  title: "Support Me",
-  description: "Support your favorite Creator",
-  applicationName: "SupportMe",
-  // app/favicon.ico and app/manifest.ts are linked automatically; these add
-  // the PNG sizes browsers prefer plus the iOS home-screen icon.
-  icons: {
-    icon: [
-      { url: "/icons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/icons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/favicon-48x48.png", sizes: "48x48", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: "SupportMe — Direct Tipping Platform Built on Stellar",
+    template: "%s | SupportMe",
   },
-  appleWebApp: {
-    capable: true,
-    title: "SupportMe",
-    statusBarStyle: "default",
+  description: "Support your favorite creators directly with XLM and USDC on Stellar. Zero platform fees and instant bank cashout.",
+  alternates: {
+    canonical: "/",
   },
-  // og:image / twitter:image come from app/opengraph-image.tsx and
-  // app/twitter-image.tsx.
-  openGraph: {
-    title: SHARE_TITLE,
-    description: SHARE_DESCRIPTION,
-    type: "website",
-    siteName: "SupportMe",
-    url: "/",
+  robots: {
+    index: true,
+    follow: true,
   },
-  twitter: {
-    card: "summary_large_image",
-    title: SHARE_TITLE,
-    description: SHARE_DESCRIPTION,
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#ffd84d",
 };
 
 export default function RootLayout({
@@ -87,4 +52,3 @@ export default function RootLayout({
     </html>
   );
 }
-
