@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Authentication | SupportMe',
+  title: 'Admin | SupportMe',
   robots: {
     index: false,
     follow: false,
   },
 };
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
