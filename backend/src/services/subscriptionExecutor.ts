@@ -15,6 +15,8 @@ import {
 import { withSorobanRpcServer } from "./sorobanRpc";
 import { executorHealth } from "./executorHealth";
 import { applyDonationToGoals } from "./goalService";
+import { log } from "../lib/logger";
+import * as Sentry from "@sentry/node";
 
 const NETWORK_PASSPHRASE = Networks.TESTNET;
 
@@ -51,17 +53,13 @@ export class SubscriptionExecutor {
   start(): void {
     const donationContractId = getDonationContractId();
     if (!donationContractId) {
-      console.warn(
-        "SubscriptionExecutor: NEXT_PUBLIC_DONATION_CONTRACT_ID is not set, skipping."
-      );
+      log("warn", "SubscriptionExecutor disabled: NEXT_PUBLIC_DONATION_CONTRACT_ID not set");
       executorHealth.markDisabled();
       return;
     }
     const executorSecretKey = getExecutorSecretKey();
     if (!executorSecretKey) {
-      console.warn(
-        "SubscriptionExecutor: EXECUTOR_SECRET_KEY is not set, recurring donations will not be charged."
-      );
+      log("warn", "SubscriptionExecutor disabled: EXECUTOR_SECRET_KEY not set");
       executorHealth.markDisabled();
       return;
     }
@@ -76,9 +74,11 @@ export class SubscriptionExecutor {
       void this.tick();
     }, pollIntervalMs);
     void this.tick();
-    console.log(
-      `SubscriptionExecutor: charging due subscriptions every ${pollIntervalMs}ms as ${this.keypair.publicKey()}`
-    );
+    log("info", "SubscriptionExecutor started", {
+      executorAddress: this.keypair.publicKey(),
+      pollIntervalMs,
+      expectedIntervalMs,
+    });
   }
 
   stop(): void {
@@ -100,22 +100,29 @@ export class SubscriptionExecutor {
         where: { active: true, nextChargeAt: { lte: new Date() } },
       });
 
+      log("info", "SubscriptionExecutor tick started", { dueCount: due.length });
+
       for (const subscription of due) {
         // One subscription's unexpected error (e.g. a DB write failing after
         // the on-chain charge settled) must not skip the rest of this pass.
         try {
           await this.charge(subscription);
         } catch (error) {
-          console.error(
-            `SubscriptionExecutor: could not process subscription ${subscription.id}:`,
-            (error as Error).message
-          );
+          const errorMessage = (error as Error).message;
+          log("error", "SubscriptionExecutor charge failed", {
+            subscriptionId: subscription.id,
+            creatorId: subscription.creatorId,
+            supporterAddress: subscription.supporterAddress,
+            amount: subscription.amount,
+            token: subscription.token,
+            error: errorMessage,
+          });
         }
       }
       ok = true;
     } catch (error) {
       runError = (error as Error).message;
-      console.error("SubscriptionExecutor: tick failed:", runError);
+      log("error", "SubscriptionExecutor tick failed", { error: runError });
     } finally {
       this.running = false;
       executorHealth.runFinished(ok, runError);
@@ -172,23 +179,52 @@ export class SubscriptionExecutor {
     });
     executorHealth.recordCharge(subscription.id, "success");
 
+    log("info", "SubscriptionExecutor charge succeeded", {
+      subscriptionId: subscription.id,
+      creatorId: subscription.creatorId,
+      supporterAddress: subscription.supporterAddress,
+      amount: subscription.amount,
+      token: subscription.token,
+      transactionHash: hash,
+      nextChargeAt: nextChargeAt.toISOString(),
+    });
+
     // The charge already settled on-chain and is recorded; a mail outage
     // must not make it look failed (or get it retried), so just log.
     try {
       await notifySubscriptionRenewed(subscription, hash, nextChargeAt);
     } catch (error) {
-      console.error(
-        `SubscriptionExecutor: renewal email failed for subscription ${subscription.id}:`,
-        (error as Error).message
-      );
+      log("error", "SubscriptionExecutor renewal email failed", {
+        subscriptionId: subscription.id,
+        error: (error as Error).message,
+      });
     }
   }
 
   private async recordFailure(subscription: Subscription, message: string): Promise<void> {
-    console.error(
-      `SubscriptionExecutor: charge failed for subscription ${subscription.id}:`,
-      message
-    );
+    log("error", "SubscriptionExecutor charge failed", {
+      subscriptionId: subscription.id,
+      creatorId: subscription.creatorId,
+      supporterAddress: subscription.supporterAddress,
+      amount: subscription.amount,
+      token: subscription.token,
+      error: message,
+    });
+
+    // Report to Sentry with full context for debugging
+    Sentry.captureException(new Error(`Subscription charge failed: ${message}`), {
+      tags: {
+        subscriptionId: String(subscription.id),
+        creatorId: String(subscription.creatorId),
+      },
+      extra: {
+        supporterAddress: subscription.supporterAddress,
+        amount: subscription.amount,
+        token: subscription.token,
+        intervalSecs: subscription.intervalSecs,
+        nextChargeAt: subscription.nextChargeAt?.toISOString(),
+      },
+    });
 
     executorHealth.recordCharge(subscription.id, "failure", message);
 
@@ -199,10 +235,10 @@ export class SubscriptionExecutor {
       try {
         notified = await notifySubscriptionPaymentFailed(subscription, message);
       } catch (error) {
-        console.error(
-          `SubscriptionExecutor: payment-failure email failed for subscription ${subscription.id}:`,
-          (error as Error).message
-        );
+        log("error", "SubscriptionExecutor payment-failure email failed", {
+          subscriptionId: subscription.id,
+          error: (error as Error).message,
+        });
       }
     }
 

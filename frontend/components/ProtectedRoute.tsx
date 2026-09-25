@@ -10,6 +10,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading, loginWithWallet } = useAuth();
   const [connecting, setConnecting] = useState(false);
   const [walletError, setWalletError] = useState<WalletConnectErrorData | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   if (loading) {
     return <TipJarLoader />;
@@ -19,10 +20,20 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     const handleConnect = async () => {
       setConnecting(true);
       setWalletError(null);
+      setSessionExpired(false);
       try {
         await loginWithWallet();
       } catch (err) {
-        setWalletError(categorizeWalletError(err));
+        const error = categorizeWalletError(err);
+        setWalletError(error);
+        // Check if error message indicates session/token issues
+        const errorMessage = error.rawMessage || error.message || '';
+        if (errorMessage.toLowerCase().includes('session') || 
+            errorMessage.toLowerCase().includes('token') ||
+            errorMessage.toLowerCase().includes('expired') ||
+            errorMessage.toLowerCase().includes('unauthorized')) {
+          setSessionExpired(true);
+        }
       } finally {
         setConnecting(false);
       }
@@ -31,9 +42,13 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="card-brutal p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-extrabold text-ink mb-2">Connect Your Wallet</h1>
+          <h1 className="text-2xl font-extrabold text-ink mb-2">
+            {sessionExpired ? 'Session Expired' : 'Connect Your Wallet'}
+          </h1>
           <p className="text-muted font-medium mb-6">
-            Sign in by connecting your Stellar wallet and approving a sign-in request.
+            {sessionExpired
+              ? 'Your session has expired. Please reconnect your wallet to continue.'
+              : 'Sign in by connecting your Stellar wallet and approving a sign-in request.'}
           </p>
           {walletError && <WalletConnectError error={walletError} onRetry={handleConnect} className="mb-4" />}
           <button

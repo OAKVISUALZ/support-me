@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import * as Sentry from "@sentry/node";
 import authRouter from "./routes/auth";
 import creatorsRouter from "./routes/creators";
 import donationsRouter from "./routes/donations";
@@ -17,6 +18,15 @@ import { checkSorobanRpc } from "./services/sorobanHealth";
 import { executorHealth } from "./services/executorHealth";
 
 const app = express();
+
+// Initialize Sentry if DSN is configured
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || "development",
+    tracesSampleRate: 0.1,
+  });
+}
 
 app.use(requestLogger);
 app.use(cors());
