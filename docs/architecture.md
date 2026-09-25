@@ -8,6 +8,72 @@ together.
 
 ## Architecture Overview
 
+```mermaid
+graph TB
+    subgraph Client["Client Layer"]
+        FE[Frontend<br/>Next.js]
+        Wallet[Stellar Wallets<br/>Freighter, xBull, Albedo, Rabet, Lobstr]
+    end
+
+    subgraph API["API Layer"]
+        BE[Backend API<br/>Express + Prisma]
+        Auth[Auth Middleware<br/>JWT + Wallet Signature]
+        Events[SSE Events<br/>Real-time Updates]
+    end
+
+    subgraph Data["Data Layer"]
+        DB[(PostgreSQL<br/>User, Creator, Donation)]
+        Cache[In-memory Cache<br/>Leaderboard TTL]
+    end
+
+    subgraph Blockchain["Blockchain Layer"]
+        RPC[Stellar Testnet RPC<br/>Soroban]
+        Donation[Donation Contract<br/>Settles donations, logs events]
+        Registry[Creator Registry<br/>Profile state, lifetime totals]
+        SAC[Stellar Asset Contract<br/>Native XLM, USDC, USDT]
+    end
+
+    subgraph External["External Services"]
+        Anchor[Stellar Anchor<br/>SEP-24 Cash-out]
+        Email[Email Service<br/>Notifications]
+    end
+
+    FE -->|HTTP/REST| BE
+    FE -->|SSE| Events
+    FE -->|Wallet Connect| Wallet
+    FE -->|Contract Calls| Donation
+    Wallet -->|Sign Transactions| Donation
+    FE -->|SEP-24| Anchor
+
+    BE --> Auth
+    BE --> DB
+    BE --> Cache
+    BE --> Events
+    BE -->|Poll Events| RPC
+    BE -->|Subscription Executor| Donation
+    BE --> Email
+
+    Donation -->|Cross-contract Call| Registry
+    Donation -->|Token Transfer| SAC
+    Donation -->|Emit Events| RPC
+    Registry -->|Profile Data| Donation
+
+    RPC --> Donation
+    RPC --> Registry
+    RPC --> SAC
+
+    Anchor -->|On-chain Payment| SAC
+
+    style FE fill:#e1f5ff
+    style BE fill:#fff4e1
+    style DB fill:#e8f5e9
+    style Donation fill:#f3e5f5
+    style Registry fill:#f3e5f5
+    style RPC fill:#fce4ec
+```
+
+### Component Descriptions
+
 - **Smart Contracts**: `contracts/`
   - `donation` and `creator-registry` are two independently deployed Soroban
     contracts on Stellar Testnet that talk to each other exclusively through

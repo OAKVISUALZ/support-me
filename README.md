@@ -528,6 +528,12 @@ npm run build
 
 See `CONTRIBUTING.md` for guidelines on making changes, opening issues, and submitting pull requests.
 
+## Documentation
+
+- [Architecture Overview](docs/architecture.md) - System architecture and component interactions
+- [Backend API Reference](docs/backend-api-reference.md) - Complete API documentation for all backend endpoints
+- [Contract Upgrade/Migration Strategy](docs/contract-upgrade-migration.md) - Strategy and runbook for contract upgrades
+
 ## Roadmap
 
 - [ ] Twitter OAuth authentication
