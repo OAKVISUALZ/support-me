@@ -30,13 +30,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const savedToken = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('authUser');
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } catch {
+        // Clear invalid stored data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+      }
     }
     setLoading(false);
   }, []);
@@ -84,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, loginWithWallet, logout }}>
+    <AuthContext.Provider value={{ user, token, loading: loading || !mounted, loginWithWallet, logout }}>
       {children}
     </AuthContext.Provider>
   );
