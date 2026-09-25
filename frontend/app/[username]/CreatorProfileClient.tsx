@@ -5,7 +5,7 @@ import Image from 'next/image';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { notify } from '@/lib/notify';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PartyIcon, TwitterLogoIcon, LinkIcon } from '@hugeicons/core-free-icons';
+import { PartyIcon, TwitterIcon, LinkIcon } from '@hugeicons/core-free-icons';
 import { connectWallet } from '@/lib/wallet';
 import {
   categorizeWalletError,
@@ -507,7 +507,7 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
               className="btn-brutal btn-brutal-white px-3 py-2 text-sm flex items-center gap-2"
               aria-label="Share on X/Twitter"
             >
-              <HugeiconsIcon icon={TwitterLogoIcon} size={18} strokeWidth={2} />
+              <HugeiconsIcon icon={TwitterIcon} size={18} strokeWidth={2} />
               Share
             </button>
             <button
