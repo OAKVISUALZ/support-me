@@ -11,6 +11,7 @@ import { AppNav } from '@/components/AppNav';
 import { Skeleton } from '@/components/Skeleton';
 import { TipChart } from '@/components/TipChart';
 import { ShareCard } from '@/components/ShareCard';
+import { ShareModal } from '@/components/ShareModal';
 import { usePrices } from '@/lib/usePrices';
 import { formatUsd } from '@/lib/prices';
 import { API_URL } from '@/lib/api';
@@ -74,6 +75,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showShareCard, setShowShareCard] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const seenDonationEventIds = useRef(new Set<string>());
   const prices = usePrices();
 
@@ -363,7 +365,7 @@ export default function DashboardPage() {
             <h1 className="text-4xl font-extrabold text-ink tracking-tight">Dashboard</h1>
             <button
               type="button"
-              onClick={() => setShowShareCard(true)}
+              onClick={() => setShowShareModal(true)}
               className="btn-brutal btn-brutal-primary shrink-0"
             >
               Share
@@ -582,6 +584,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {showShareModal && (
+        <ShareModal
+          creator={creator}
+          onClose={() => setShowShareModal(false)}
+          onOpenShareCard={() => setShowShareCard(true)}
+        />
+      )}
 
       {showShareCard && (
         <ShareCard creator={creator} donations={donations} onClose={() => setShowShareCard(false)} />

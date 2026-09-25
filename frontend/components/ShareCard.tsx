@@ -296,6 +296,15 @@ export function ShareCard({ creator, donations, onClose }: ShareCardProps) {
     }, 'image/png');
   };
 
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      toast.success('Profile link copied to clipboard!');
+    } catch {
+      toast.error('Could not copy the profile link.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-ink/70 flex items-center justify-center p-4">
       <div ref={modalRef} className="card-brutal bg-background max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
@@ -349,6 +358,13 @@ export function ShareCard({ creator, donations, onClose }: ShareCardProps) {
             className="btn-brutal btn-brutal-white"
           >
             Copy to Clipboard
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="btn-brutal btn-brutal-white"
+          >
+            Copy Link
           </button>
         </div>
       </div>
