@@ -326,6 +326,10 @@ export default function CreatorProfileClient({ params }: { params: Promise<{ use
         address = await connectWallet();
         setUserAddress(address);
       }
+      if (!address) {
+        setSending(false);
+        return;
+      }
 
       // Recording a subscription (so the supporter can later see/cancel it)
       // requires a site sign-in, on top of connecting the wallet for signing
