@@ -12,6 +12,7 @@ import {
   Search01Icon,
 } from '@hugeicons/core-free-icons';
 import { WalletMenu } from '@/components/WalletMenu';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const LINKS = [
   { href: '/app', label: 'App', icon: GridViewIcon },
@@ -60,6 +61,7 @@ export function AppNav() {
         </div>
 
         <div className="flex items-center gap-4 shrink-0">
+          <ThemeToggle />
           <WalletMenu />
         </div>
       </div>

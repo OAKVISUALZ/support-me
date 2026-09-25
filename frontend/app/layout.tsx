@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { AppToaster } from "@/components/AppToaster";
 import { OfflineBanner } from "@/components/OfflineBanner";
 
@@ -65,8 +66,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffd84d",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#161412" },
+    { color: "#ffd84d" },
+  ],
 };
+
+// Applied to <html> before first paint so the stored/system theme is in place
+// before React hydrates (no flash of the wrong theme). Mirrors the logic in
+// context/ThemeContext.tsx — keep the two in sync.
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('supportme-theme');var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(_){}})();`;
 
 export default function RootLayout({
   children,
@@ -74,15 +83,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <OfflineBanner />
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <AppToaster />
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+          <AppToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

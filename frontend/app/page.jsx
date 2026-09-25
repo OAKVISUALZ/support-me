@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { TipJar } from '@/components/TipJar'
 import { WalletMenu } from '@/components/WalletMenu'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { WalletConnectError } from '@/components/WalletConnectError'
 import { categorizeWalletError } from '@/lib/walletErrors'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -117,6 +118,7 @@ export default function Home() {
             )}
           </div>
           <div className="flex items-center gap-4 shrink-0">
+            <ThemeToggle />
             {user ? (
               <WalletMenu />
             ) : (
