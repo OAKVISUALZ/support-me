@@ -248,15 +248,25 @@ export default function AppHubPage() {
 
           {/* Cash out */}
           <div className="card-brutal p-6">
-            <h2 className="text-lg font-extrabold text-ink mb-1">Cash out</h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-extrabold text-ink">Cash out</h2>
+              <div className="flex gap-1.5">
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-brand-lime border border-ink text-ink">
+                  XLM
+                </span>
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-brand-cyan border border-ink text-ink">
+                  USDC
+                </span>
+              </div>
+            </div>
             <p className="text-sm text-muted mb-4 font-medium">
-              Convert your USDC to Naira and send it straight to your bank account.
+              Convert your XLM or USDC directly to Naira and send it straight to your bank account.
             </p>
             <Link
               href="/app/withdraw"
               className="btn-brutal btn-brutal-primary w-full"
             >
-              Withdraw
+              Withdraw to Naira
             </Link>
           </div>
         </div>

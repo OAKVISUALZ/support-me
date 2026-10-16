@@ -126,4 +126,20 @@ describe('AppHubPage', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  describe('Cash out card (#154)', () => {
+    it('renders cash out card mentioning XLM and USDC with link to /app/withdraw', async () => {
+      render(<AppHubPage />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Cash out' })).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Convert your XLM or USDC directly to Naira/i)).toBeInTheDocument();
+      const withdrawLink = screen.getByRole('link', { name: 'Withdraw to Naira' });
+      expect(withdrawLink).toHaveAttribute('href', '/app/withdraw');
+      expect(screen.getAllByText('XLM').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('USDC').length).toBeGreaterThan(0);
+    });
+  });
 });
