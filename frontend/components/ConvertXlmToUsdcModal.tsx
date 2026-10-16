@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { notify } from '@/lib/notify';
 import { useAuth } from '@/context/AuthContext';
-import { signTransaction } from '@/lib/wallet'; // adjust import to match your wallet helper
+import { signTransaction } from '@/lib/wallet';
 
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
 const USDC_ISSUER = process.env.NEXT_PUBLIC_USDC_ISSUER;
+const NETWORK = StellarSdk.Networks.TESTNET;
 
 export default function ConvertXlmToUsdcModal({
   open,
@@ -23,8 +24,14 @@ export default function ConvertXlmToUsdcModal({
 }) {
   const { user } = useAuth();
   const walletAddress = user?.walletAddress || '';
-  const [amount, setAmount] = useState(String(maxXlm || ''));
+  const [amount, setAmount] = useState<string>(String(maxXlm || ''));
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // keep amount in sync if maxXlm changes while modal is open
+  useEffect(() => {
+    setAmount(String(maxXlm || ''));
+  }, [maxXlm]);
 
   if (!open) return null;
   if (!USDC_ISSUER) {
@@ -42,6 +49,7 @@ export default function ConvertXlmToUsdcModal({
   }
 
   async function handleConvert() {
+    setError(null);
     setLoading(true);
     try {
       const n = Number(amount);
@@ -54,7 +62,7 @@ export default function ConvertXlmToUsdcModal({
 
       const txBuilder = new StellarSdk.TransactionBuilder(account, {
         fee: StellarSdk.BASE_FEE,
-        networkPassphrase: StellarSdk.Networks.TESTNET,
+        networkPassphrase: NETWORK,
       });
 
       txBuilder.addOperation(
@@ -63,44 +71,62 @@ export default function ConvertXlmToUsdcModal({
           sendAmount: n.toFixed(7), // send XLM fixed format
           destination: walletAddress,
           destAsset: usdcAsset,
-          destMin: '0', // permissive: in prod compute destMin to protect against slippage
-          path: [], // empty path will allow Stellar DEX to find path (native -> USDC)
+          // NOTE: destMin should be set to a realistic minimum in production
+          destMin: '0',
+          path: [],
         }),
       );
 
       const tx = txBuilder.setTimeout(180).build();
 
-      // Let the user's wallet sign the transaction.
-      // NOTE: adapt to your wallet helper's API: some helpers expect a Transaction object,
-      // others expect XDR. The helper used here is `signTransaction` — update if needed.
-      const signedXdr = await signTransaction(tx); // <-- adjust if your helper differs
+      // Our wallet.signTransaction helper expects an XDR string + address.
+      // Normalize to that shape and handle the variety of mocked/real returns:
+      // - mocked helpers often return { signedTxXdr: '...' }
+      // - some helpers return a base64 XDR string
+      // - some return a Transaction instance
+      const xdr = tx.toXDR();
+      const signed = await signTransaction(xdr, walletAddress as string);
 
-      // If signTransaction already submits, you can skip submit below.
-      // Otherwise, submit the signed XDR to Horizon.
-      // If `signTransaction` returns a signed Transaction object/XDR, submit with server.
-      try {
-        // If signTransaction returned a Transaction object or XDR, handle both.
-        if (typeof signedXdr === 'string') {
-          // assume XDR string
-          await server.submitTransaction(
-            StellarSdk.TransactionBuilder.fromXDR(signedXdr, StellarSdk.Networks.TESTNET),
-          );
-        } else if ((signedXdr as any).toXDR) {
-          // assume Transaction instance
-          await server.submitTransaction(signedXdr as any);
-        } else {
-          // Fallback: try signing locally if the wallet helper returned the signed transaction
-          // (you may need to adapt this block to your wallet lib)
-          throw new Error('Unexpected signed transaction form — adapt wallet helper integration');
+      // Resolve signed XDR from common shapes
+      let signedXdr: string | null = null;
+      if (!signed) {
+        throw new Error('No signed transaction returned from wallet');
+      }
+      if (typeof signed === 'string') {
+        signedXdr = signed;
+      } else if (typeof signed === 'object') {
+        if ((signed as any).signedTxXdr) signedXdr = (signed as any).signedTxXdr;
+        else if ((signed as any).signedXdr) signedXdr = (signed as any).signedXdr;
+        else if ((signed as any).tx && typeof (signed as any).tx.toXDR === 'function') {
+          signedXdr = (signed as any).tx.toXDR();
+        } else if ((signed as any).toXDR) {
+          // some libs return a transaction-like object with toXDR
+          signedXdr = (signed as any).toXDR();
         }
+      }
+
+      if (!signedXdr) {
+        throw new Error('Could not interpret signed transaction returned by wallet');
+      }
+
+      // Convert to a Transaction object the same way other parts of the code do
+      const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK);
+
+      // Submit to horizon. Some wallet helpers may already have submitted;
+      // tolerate both success and submission errors here.
+      try {
+        await server.submitTransaction(signedTx);
       } catch (submitErr) {
-        // Some wallet helpers submit themselves and return a result; tolerate both.
+        // If wallet already submitted or network hiccup, surface a helpful
+        // message but still proceed to refresh balances — caller may check.
+        console.warn('submitTransaction failed (wallet may have submitted already):', submitErr);
       }
 
       notify.success('Conversion submitted — check your wallet for confirmations');
       onSuccess?.();
       onClose();
     } catch (err: any) {
+      setError(err?.message || String(err));
       notify.error('Conversion failed', err?.message || String(err));
     } finally {
       setLoading(false);
@@ -123,6 +149,7 @@ export default function ConvertXlmToUsdcModal({
           inputMode="decimal"
           disabled={loading}
         />
+        {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
         <div className="flex gap-2">
           <button className="btn-brutal btn-brutal-white" onClick={onClose} disabled={loading}>Cancel</button>
           <button className="btn-brutal btn-brutal-primary" onClick={handleConvert} disabled={loading}>
