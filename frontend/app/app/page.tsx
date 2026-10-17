@@ -24,6 +24,8 @@ import { ShareModal } from '@/components/ShareModal';
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
 
+export const BALANCE_HIDDEN_STORAGE_KEY = 'balance_hidden';
+
 // The balance we hold per asset code, as a Horizon-precision string. `null`
 // means "not loaded / no trustline" and renders as a dash.
 type Balances = Record<string, string | null>;
@@ -43,12 +45,12 @@ export default function AppHubPage() {
   // Load balance masking preference from localStorage (defaults to hidden = true)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('balance_hidden');
+      const saved = localStorage.getItem(BALANCE_HIDDEN_STORAGE_KEY);
       if (saved !== null) {
         setHidden(saved === 'true');
       }
     } catch {
-      // Ignore localStorage errors
+      // Ignore localStorage errors (e.g. private browsing, disabled cookies)
     }
   }, []);
 
@@ -56,7 +58,7 @@ export default function AppHubPage() {
     setHidden((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem('balance_hidden', String(next));
+        localStorage.setItem(BALANCE_HIDDEN_STORAGE_KEY, String(next));
       } catch {
         // Ignore localStorage errors
       }
@@ -73,7 +75,10 @@ export default function AppHubPage() {
   // Read on-chain balances for every supported asset in one account load, so
   // the aggregate figure reflects what's actually in the wallet.
   const loadBalances = useCallback(async () => {
-    if (!walletAddress) return;
+    if (!walletAddress) {
+      setBalancesLoading(false);
+      return;
+    }
     setBalancesLoading(true);
     try {
       const account = await server.loadAccount(walletAddress);
@@ -179,10 +184,10 @@ export default function AppHubPage() {
               </div>
             </div>
 
-            {balancesLoading ? (
-              <Skeleton className="h-12 w-48" />
-            ) : hidden ? (
+            {hidden ? (
               <p className="text-4xl sm:text-5xl font-extrabold text-ink tabular-nums">••••••</p>
+            ) : balancesLoading ? (
+              <Skeleton className="h-12 w-48" />
             ) : showUsd && totalUsd != null ? (
               <p className="text-4xl sm:text-5xl font-extrabold text-ink tabular-nums">
                 ${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -250,7 +255,10 @@ export default function AppHubPage() {
           <div className="card-brutal p-6">
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-lg font-extrabold text-ink">Cash out</h2>
-              <div className="flex gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs px-2 py-0.5 rounded-md bg-brand-lime border border-ink/30 font-bold text-ink">
+                  Demo
+                </span>
                 <span className="px-2 py-0.5 rounded text-xs font-bold bg-brand-lime border border-ink text-ink">
                   XLM
                 </span>

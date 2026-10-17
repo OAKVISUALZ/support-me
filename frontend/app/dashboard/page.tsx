@@ -16,6 +16,7 @@ import { TipChart } from '@/components/TipChart';
 import { ShareCard } from '@/components/ShareCard';
 import { ShareModal } from '@/components/ShareModal';
 import { QrCodeCard } from '@/components/QrCodeCard';
+import { DashboardStats, type CreatorStats } from '@/components/DashboardStats';
 import { usePrices } from '@/lib/usePrices';
 import { formatUsd } from '@/lib/prices';
 import { API_URL } from '@/lib/api';
@@ -66,6 +67,9 @@ export default function DashboardPage() {
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [infiniteScroll, setInfiniteScroll] = useState(true);
   const [error, setError] = useState('');
+  const [stats, setStats] = useState<CreatorStats | null>(null);
+  // Bumped on every live donation so the metrics are re-fetched from the API.
+  const [statsVersion, setStatsVersion] = useState(0);
   const [showShareCard, setShowShareCard] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const seenDonationEventIds = useRef(new Set<string>());
@@ -226,6 +230,26 @@ export default function DashboardPage() {
 
   // Subscribe to the backend's SSE stream so newly confirmed on-chain
   // donations show up here live, without needing to refresh the page.
+  // Dashboard metrics (#224) are aggregated server-side over every verified
+  // donation, so they stay correct beyond the first page of history.
+  useEffect(() => {
+    if (!token || !creator) return;
+    let cancelled = false;
+    fetch(`${API_URL}/api/creators/me/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && Array.isArray(data.currencies)) setStats(data);
+      })
+      .catch(() => {
+        // Metrics are best-effort; the rest of the dashboard still works.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, creator, statsVersion]);
+
   useEffect(() => {
     if (!creator?.walletAddress) return;
 
@@ -270,6 +294,7 @@ export default function DashboardPage() {
         return [newDonation, ...prev];
       });
       setTotalDonations((prev) => (prev !== null ? prev + 1 : null));
+      setStatsVersion((v) => v + 1);
 
       notify.success('New donation received!', {
         icon: <HugeiconsIcon icon={PartyIcon} size={18} strokeWidth={1.5} />,
@@ -372,6 +397,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
+              {stats && <DashboardStats stats={stats} prices={prices} />}
+
               {/* Volume by asset, plus lifetime cashed out */}
               <div className="grid md:grid-cols-3 gap-6 mb-8">
                 <div className="card-brutal bg-brand-cyan p-6">
@@ -422,7 +449,14 @@ export default function DashboardPage() {
           {/* Recent Activity — tips received and cash-outs, newest first */}
           <div className="card-brutal p-4 sm:p-6 overflow-x-auto">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg font-extrabold text-ink">Recent Activity</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-extrabold text-ink">Recent Activity</h2>
+                {totalDonations !== null && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-light-purple/40 border border-ink/20 text-ink">
+                    {donations.length} of {totalDonations} tips
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={exportDonationsCsv}
@@ -501,6 +535,14 @@ export default function DashboardPage() {
                       <span className="text-xs font-bold text-ink uppercase tracking-wide whitespace-nowrap">
                         Withdraw
                       </span>
+                      {withdrawal.anchorTxId && (
+                        <span
+                          className="text-[11px] font-mono text-muted/80 truncate max-w-[120px] hidden sm:inline"
+                          title={`Ref: ${withdrawal.anchorTxId}`}
+                        >
+                          {withdrawal.anchorTxId}
+                        </span>
+                      )}
                       <span className="text-xs text-muted whitespace-nowrap ml-auto pl-2">
                         {new Date(withdrawal.createdAt).toLocaleDateString(undefined, {
                           month: 'short',
@@ -550,7 +592,7 @@ export default function DashboardPage() {
                   data-testid="donations-loading-indicator"
                   className="p-3 bg-brand-light-purple/20 border-2 border-dashed border-ink/20 rounded-lg flex items-center justify-center gap-2 text-sm font-bold text-ink"
                 >
-                  <div className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full animate-spin" />
+                  <div aria-hidden="true" className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full motion-safe:animate-spin" />
                   <span>Loading older donations…</span>
                 </div>
               </div>
