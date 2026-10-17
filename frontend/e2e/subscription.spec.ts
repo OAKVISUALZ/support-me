@@ -77,7 +77,12 @@ test.describe('Subscription Flows', () => {
     await expect(cancelBtn).toBeVisible();
     await cancelBtn.click();
 
-    // 4. Verify success toast
+    // 4. Confirm cancellation in dialog
+    const confirmBtn = page.getByRole('button', { name: 'Cancel donation' });
+    await expect(confirmBtn).toBeVisible();
+    await confirmBtn.click();
+
+    // 5. Verify success toast
     await expect(page.getByText('Subscription cancelled')).toBeVisible({ timeout: 10000 });
 
     // 5. Verify status updates to Cancelled and button is removed
