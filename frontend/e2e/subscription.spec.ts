@@ -22,7 +22,7 @@ test.describe('Subscription Flows', () => {
     await recurringCheckbox.check();
 
     // 4. Verify interval selector is visible and defaults to Monthly (30)
-    const intervalSelect = page.getByRole('combobox');
+    const intervalSelect = page.getByRole('combobox', { name: /interval/i });
     await expect(intervalSelect).toBeVisible();
     await expect(intervalSelect).toHaveValue('30');
 

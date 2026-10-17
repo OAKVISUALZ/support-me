@@ -172,7 +172,7 @@ describe('AppHubPage', () => {
       await waitFor(() => {
         expect(screen.queryByText('••••••')).not.toBeInTheDocument();
         expect(screen.getByText('100')).toBeInTheDocument();
-        expect(screen.getByText('XLM')).toBeInTheDocument();
+        expect(screen.getAllByText('XLM').length).toBeGreaterThan(0);
       });
 
       expect(screen.getByRole('button', { name: 'Hide balance' })).toBeInTheDocument();

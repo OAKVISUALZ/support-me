@@ -242,8 +242,9 @@ describe('WithdrawPage - XLM and USDC Cash Out (#154, #164)', () => {
   });
 
   it('verifies bank account number and displays account holder name', async () => {
-    vi.mocked(fetch).mockImplementation((url: string) => {
-      if (typeof url === 'string' && url.includes('/api/verify-account')) {
+    vi.mocked(fetch).mockImplementation((input: any) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/verify-account')) {
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -277,15 +278,16 @@ describe('WithdrawPage - XLM and USDC Cash Out (#154, #164)', () => {
   });
 
   it('submits withdrawal successfully, calls POST /api/withdrawals, and displays reference', async () => {
-    vi.mocked(fetch).mockImplementation((url: string) => {
-      if (typeof url === 'string' && url.includes('/api/verify-account')) {
+    vi.mocked(fetch).mockImplementation((input: any) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/verify-account')) {
         return Promise.resolve({
           ok: true,
           status: 200,
           json: async () => ({ accountName: 'Jane Doe' }),
         } as Response);
       }
-      if (typeof url === 'string' && url.includes('/api/withdrawals')) {
+      if (url.includes('/api/withdrawals')) {
         return Promise.resolve({
           ok: true,
           status: 201,

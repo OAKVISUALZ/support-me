@@ -24,7 +24,7 @@ import { ShareModal } from '@/components/ShareModal';
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
 
-export const BALANCE_HIDDEN_STORAGE_KEY = 'balance_hidden';
+const BALANCE_HIDDEN_STORAGE_KEY = 'balance_hidden';
 
 // The balance we hold per asset code, as a Horizon-precision string. `null`
 // means "not loaded / no trustline" and renders as a dash.
