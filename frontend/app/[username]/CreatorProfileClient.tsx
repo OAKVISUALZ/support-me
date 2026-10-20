@@ -333,12 +333,12 @@ function CreatorProfileView({ username, locale, onLocaleChange }: CreatorProfile
         );
         setMissingTrustline(false);
       } else {
-        match = account.balances.find((b: { asset_type?: string; asset_code?: string }) => {
+        match = account.balances.find((b) => {
           if (b.asset_type === 'native') return false;
           if (asset && asset.code === code && typeof asset.balanceMatcher === 'function') {
             return asset.balanceMatcher(b);
           }
-          return b.asset_code === code;
+          return 'asset_code' in b && b.asset_code === code;
         });
         // For non-XLM assets, missing match means no trustline
         setMissingTrustline(!match);
