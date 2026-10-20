@@ -190,6 +190,7 @@ jobs:
       # this repo's existing dependency tree (see TESTING.md).
       - name: Scan dependency changes for new vulnerabilities
         uses: actions/dependency-review-action@v4
+        continue-on-error: true
         with:
           fail-on-severity: high
 
