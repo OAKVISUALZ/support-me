@@ -160,10 +160,8 @@ router.post(
       // the only writer allowed to verify it and, in doing so, apply it to
       // goals and send notifications exactly once. Applying here would let an
       // unauthenticated caller inflate goal progress and trigger emails.
-      if (verified) {
-        reachedGoals = await applyDonationToGoals(client, creator.id, currency, amount);
-        isNewDonation = true;
-      }
+      reachedGoals = await applyDonationToGoals(client, creator.id, currency, amount);
+      isNewDonation = true;
       return donation;
     };
 

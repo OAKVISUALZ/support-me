@@ -71,6 +71,7 @@ const subscription = {
   lastError: null,
   failureNotifiedAt: null,
   subscribeTxHash: null,
+  failureCount: 0,
 } as never;
 
 describe("SubscriptionExecutor donation indexing", () => {
