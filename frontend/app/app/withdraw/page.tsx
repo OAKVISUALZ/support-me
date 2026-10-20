@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { useAuth } from '@/context/AuthContext';
@@ -64,7 +64,7 @@ export default function WithdrawPage() {
     }
   }, []);
 
-  const refreshBalances = () => {
+  const refreshBalances = useCallback(() => {
     if (!walletAddress) { setBalancesLoading(false); return; }
     setBalancesLoading(true);
     server.loadAccount(walletAddress)
@@ -89,10 +89,8 @@ export default function WithdrawPage() {
         const numNative = parseFloat(nativeBalStr);
         const numUsdc = usdcBalStr ? parseFloat(usdcBalStr) : 0;
         if (numUsdc > 0 && numNative === 0) {
-          setSelectedAsset((prev) => {
-            const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-            return params?.get('asset')?.toUpperCase() === 'XLM' ? 'XLM' : 'USDC';
-          });
+          const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+          setSelectedAsset(params?.get('asset')?.toUpperCase() === 'XLM' ? 'XLM' : 'USDC');
         }
       })
       .catch((err) => {
@@ -106,11 +104,11 @@ export default function WithdrawPage() {
         );
       })
       .finally(() => setBalancesLoading(false));
-  };
+  }, [walletAddress]);
 
   useEffect(() => {
     refreshBalances();
-  }, [walletAddress]);
+  }, [refreshBalances]);
 
   const NGN_PER_USDC = ngnRate?.rate || 1380;
   const NGN_PER_XLM = ngnRate?.xlmRate || (prices?.XLM ? Math.round(prices.XLM * NGN_PER_USDC) : 165);

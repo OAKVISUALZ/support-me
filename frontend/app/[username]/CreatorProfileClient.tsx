@@ -895,7 +895,7 @@ function CreatorProfileView({ username, locale, onLocaleChange }: CreatorProfile
                         rel="noopener noreferrer"
                         className="underline"
                       >
-                        Circle's faucet
+                        Circle&apos;s faucet
                       </a>
                       . Test tokens have no real value.
                     </p>

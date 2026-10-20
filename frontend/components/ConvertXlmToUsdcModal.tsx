@@ -88,13 +88,16 @@ export default function ConvertXlmToUsdcModal({
       }
       if (typeof signed === 'string') {
         signedXdr = signed;
-      } else if (typeof signed === 'object') {
-        if ((signed as any).signedTxXdr) signedXdr = (signed as any).signedTxXdr;
-        else if ((signed as any).signedXdr) signedXdr = (signed as any).signedXdr;
-        else if ((signed as any).tx && typeof (signed as any).tx.toXDR === 'function') {
-          signedXdr = (signed as any).tx.toXDR();
-        } else if ((signed as any).toXDR) {
-          signedXdr = (signed as any).toXDR();
+      } else if (typeof signed === 'object' && signed !== null) {
+        const s = signed as Record<string, unknown>;
+        if (typeof s.signedTxXdr === 'string') {
+          signedXdr = s.signedTxXdr;
+        } else if (typeof s.signedXdr === 'string') {
+          signedXdr = s.signedXdr;
+        } else if (s.tx && typeof (s.tx as { toXDR?: () => string }).toXDR === 'function') {
+          signedXdr = (s.tx as { toXDR: () => string }).toXDR();
+        } else if (typeof (s as { toXDR?: () => string }).toXDR === 'function') {
+          signedXdr = (s as { toXDR: () => string }).toXDR();
         }
       }
 
@@ -113,9 +116,10 @@ export default function ConvertXlmToUsdcModal({
       notify.success('Conversion submitted — check your wallet for confirmations');
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      setError(err?.message || String(err));
-      notify.error('Conversion failed', err?.message || String(err));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      notify.error('Conversion failed', message);
     } finally {
       setLoading(false);
     }

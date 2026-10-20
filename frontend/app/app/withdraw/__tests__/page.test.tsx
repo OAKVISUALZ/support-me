@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useCreator } from '@/context/CreatorContext';
 import { useNgnRate } from '@/lib/useNgnRate';
 import { usePrices } from '@/lib/usePrices';
-import { notify } from '@/lib/notify';
 
 const { mockLoadAccount, mockNotifySuccess, mockNotifyError } = vi.hoisted(() => ({
   mockLoadAccount: vi.fn(),
@@ -14,7 +13,7 @@ const { mockLoadAccount, mockNotifySuccess, mockNotifyError } = vi.hoisted(() =>
 }));
 
 vi.mock('@stellar/stellar-sdk', async () => {
-  const actual = await vi.importActual<any>('@stellar/stellar-sdk');
+  const actual = await vi.importActual<typeof import('@stellar/stellar-sdk')>('@stellar/stellar-sdk');
   return {
     ...actual,
     Horizon: {
@@ -110,7 +109,7 @@ describe('WithdrawPage - XLM and USDC Cash Out (#154, #164)', () => {
       ageMinutes: 0,
     });
 
-    (mockUsePrices as any).mockReturnValue({
+    (mockUsePrices as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       XLM: 0.12,
       USDC: 1.0,
     });
@@ -242,7 +241,7 @@ describe('WithdrawPage - XLM and USDC Cash Out (#154, #164)', () => {
   });
 
   it('verifies bank account number and displays account holder name', async () => {
-    vi.mocked(fetch).mockImplementation((input: any) => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/verify-account')) {
         return Promise.resolve({
@@ -278,7 +277,7 @@ describe('WithdrawPage - XLM and USDC Cash Out (#154, #164)', () => {
   });
 
   it('submits withdrawal successfully, calls POST /api/withdrawals, and displays reference', async () => {
-    vi.mocked(fetch).mockImplementation((input: any) => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/verify-account')) {
         return Promise.resolve({
