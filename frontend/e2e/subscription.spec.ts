@@ -72,7 +72,7 @@ test.describe('Subscription Flows', () => {
     await expect(page.getByText('Alice Creator')).toBeVisible();
     await expect(page.getByText(/10 XLM · monthly/i)).toBeVisible();
 
-    // 3. Click Cancel button
+    // 3. Click Cancel button and confirm in dialog
     const cancelBtn = page.getByRole('button', { name: 'Cancel' });
     await expect(cancelBtn).toBeVisible();
     await cancelBtn.click();
@@ -85,7 +85,7 @@ test.describe('Subscription Flows', () => {
     // 5. Verify success toast
     await expect(page.getByText('Subscription cancelled')).toBeVisible({ timeout: 10000 });
 
-    // 5. Verify status updates to Cancelled and button is removed
+    // 6. Verify status updates to Cancelled and button is removed
     await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   });

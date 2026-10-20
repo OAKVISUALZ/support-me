@@ -13,6 +13,7 @@ import { useNgnRate } from '@/lib/useNgnRate';
 import { usePrices } from '@/lib/usePrices';
 import ConvertXlmToUsdcModal from '@/components/ConvertXlmToUsdcModal';
 import { API_URL } from '@/lib/api';
+import { fundWithFriendbot } from '@/lib/contract';
 
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const server = new StellarSdk.Horizon.Server(HORIZON_URL);
@@ -36,6 +37,8 @@ export default function WithdrawPage() {
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [balancesLoading, setBalancesLoading] = useState(true);
+  const [isUnfunded, setIsUnfunded] = useState(false);
+  const [funding, setFunding] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [bank, setBank] = useState('');
@@ -66,15 +69,19 @@ export default function WithdrawPage() {
     setBalancesLoading(true);
     server.loadAccount(walletAddress)
       .then((account) => {
-        const native = account.balances.find((b) => b.asset_type === 'native');
-        const nativeBalStr = native ? Math.round(parseFloat((native as any).balance)).toString() : '0';
+        setIsUnfunded(false);
+        const native = account.balances.find(
+          (b): b is StellarSdk.Horizon.HorizonApi.BalanceLineNative => b.asset_type === 'native'
+        );
+        const nativeBalStr = native ? Math.round(parseFloat(native.balance)).toString() : '0';
         setXlmBalance(nativeBalStr);
 
         const currentIssuer = process.env.NEXT_PUBLIC_USDC_ISSUER;
         const usdc = account.balances.find(
-          (b) => (b as any).asset_code === 'USDC' && (!currentIssuer || (b as any).asset_issuer === currentIssuer)
+          (b): b is StellarSdk.Horizon.HorizonApi.BalanceLineAsset =>
+            'asset_code' in b && b.asset_code === 'USDC' && (!currentIssuer || b.asset_issuer === currentIssuer)
         );
-        const usdcBalStr = usdc ? Math.round(parseFloat((usdc as any).balance)).toString() : null;
+        const usdcBalStr = usdc ? Math.round(parseFloat(usdc.balance)).toString() : null;
         setUsdcBalance(usdcBalStr);
 
         // If user holds only USDC and no XLM, default to USDC.
@@ -88,12 +95,16 @@ export default function WithdrawPage() {
           });
         }
       })
-      .catch(() =>
+      .catch((err) => {
+        const message = (err as Error)?.message || '';
+        if (/not found|404|account does not exist/i.test(message)) {
+          setIsUnfunded(true);
+        }
         notify.error(
           'Could not load your balances',
           'Make sure your wallet is funded on testnet, then refresh the page.',
-        ),
-      )
+        );
+      })
       .finally(() => setBalancesLoading(false));
   };
 
@@ -109,6 +120,33 @@ export default function WithdrawPage() {
   const availableXlm = xlmBalance != null ? parseFloat(xlmBalance) : 0;
   const availableUsdc = usdcBalance != null ? parseFloat(usdcBalance) : 0;
   const availableBalance = selectedAsset === 'XLM' ? availableXlm : availableUsdc;
+
+  const handleFundWithFriendbot = async () => {
+    if (!walletAddress) return;
+    setFunding(true);
+    try {
+      await fundWithFriendbot(walletAddress);
+      notify.success('Wallet funded successfully!');
+      // Reload balances
+      const account = await server.loadAccount(walletAddress);
+      setIsUnfunded(false);
+      const native = account.balances.find(
+        (b): b is StellarSdk.Horizon.HorizonApi.BalanceLineNative => b.asset_type === 'native'
+      );
+      setXlmBalance(native ? Math.round(parseFloat(native.balance)).toString() : '0');
+
+      const usdcIssuer = process.env.NEXT_PUBLIC_USDC_ISSUER;
+      const usdc = account.balances.find(
+        (b): b is StellarSdk.Horizon.HorizonApi.BalanceLineAsset =>
+          'asset_code' in b && b.asset_code === 'USDC' && (!usdcIssuer || b.asset_issuer === usdcIssuer)
+      );
+      setUsdcBalance(usdc ? Math.round(parseFloat(usdc.balance)).toString() : null);
+    } catch (err) {
+      notify.error('Failed to fund wallet', (err as Error).message);
+    } finally {
+      setFunding(false);
+    }
+  };
 
   const verifyAccount = async (acctNo: string, selectedBank: string) => {
     if (!/^\d{10}$/.test(acctNo) || !selectedBank) return;
@@ -271,7 +309,7 @@ export default function WithdrawPage() {
                   }`}
                   title="Click to withdraw XLM"
                 >
-                  {xlmBalance != null ? Number(xlmBalance).toLocaleString() : '—'} <span className="text-base font-bold text-ink/70">XLM</span>
+                  {isUnfunded ? 'Not funded' : (xlmBalance != null ? Number(xlmBalance).toLocaleString() : '—')} <span className="text-base font-bold text-ink/70">XLM</span>
                 </button>
                 <button
                   type="button"
@@ -281,9 +319,18 @@ export default function WithdrawPage() {
                   }`}
                   title="Click to withdraw USDC"
                 >
-                  {usdcBalance != null ? Number(usdcBalance).toLocaleString() : '—'} <span className="text-base font-bold text-ink/70">USDC</span>
+                  {isUnfunded ? 'Not funded' : (usdcBalance != null ? Number(usdcBalance).toLocaleString() : '—')} <span className="text-base font-bold text-ink/70">USDC</span>
                 </button>
               </div>
+            )}
+            {isUnfunded && !balancesLoading && (
+              <button
+                onClick={handleFundWithFriendbot}
+                disabled={funding}
+                className="btn-brutal btn-brutal-primary w-full mt-3 text-xs py-1.5"
+              >
+                {funding ? 'Funding...' : 'Fund with Friendbot'}
+              </button>
             )}
           </div>
 
